@@ -1,7 +1,6 @@
 #include <stdio.h>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   int distance = 100;
   float power = 2.345f;
   double super_power = 56789.4537;
@@ -17,6 +16,6 @@ int main(int argc, char *argv[])
   printf("I have a first name %s. \n", first_name);
   printf("I have a last name %s \n", last_name);
   printf("My whole name is %s %c. %s. \n ", first_name, initial, last_name);
-  // printf("My name is %s i am %d years old\n", first_name, age);
+  printf("My name is %s i am %d years old\n", first_name, age);
   return 0;
 }
