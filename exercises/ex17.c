@@ -4,17 +4,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_DATA 512
-#define MAX_ROWS 100
 typedef struct Address {
   int id;
   int set;
-  char name[MAX_DATA];
-  char email[MAX_DATA];
+  char *name;
+  char *email;
 } Address;
 
 typedef struct Database {
-  Address rows[MAX_ROWS];
+  size_t max_data;
+  size_t max_rows;
+  Address *rows;
 } Database;
 
 typedef struct Connection {
@@ -76,8 +76,9 @@ void Database_close(Connection *conn) {
   if (conn) {
     if (conn->file)
       fclose(conn->file);
-    if (conn->db)
+    if (conn->db) {
       free(conn->db);
+    }
     free(conn);
   }
 }
@@ -94,29 +95,47 @@ void Database_write(Connection *conn) {
 }
 
 void Database_create(Connection *conn) {
-  int i = 0;
+  printf("Enter max rows: ");
+  size_t max_rows;
+  scanf("%zu", &max_rows);
 
-  for (i = 0; i < MAX_ROWS; i++) {
-    Address addr = {.id = i, .set = 0};
+  printf("Enter max data: ");
+  size_t max_data;
+  scanf("%zu", &max_data);
+
+  conn->db->max_rows = max_rows;
+  conn->db->max_data = max_data;
+
+  Address *rows = (Address *)malloc(sizeof(Address) * conn->db->max_rows);
+  if (!rows)
+    die("Unable to create database", conn);
+  conn->db->rows = rows;
+
+  for (size_t i = 0; i < max_rows; i++) {
+    char *name = (char *)malloc(conn->db->max_data);
+    char *email = (char *)malloc(conn->db->max_data);
+
+    memset(name, 0, conn->db->max_data);
+    memset(email, 0, conn->db->max_data);
+
+    Address addr = {.id = i, .set = 0, .name = name, .email = email};
     conn->db->rows[i] = addr;
   }
 }
 
 void Database_set(Connection *conn, int id, char *name, char *email) {
-  Address *addr = &(conn->db->rows[id]);
+  Address *addr = &conn->db->rows[id];
+  if (addr->set)
+    die("Already set, delete it first", conn);
+
   addr->set = 1;
-  // WARNING: bug, read the "How To Break It" and fix this
-  name[MAX_DATA] = '\0';
 
-  char *res = strncpy(addr->name, name, MAX_DATA);
-  // demonstrate the strncpy bug
-  if (!res)
-    die("Name copy failed.", conn);
+  name[conn->db->max_data - 1] = '\0';
+  email[conn->db->max_data - 1] = '\0';
 
-  email[MAX_DATA] = '\0';
-  res = strncpy(addr->email, email, MAX_DATA);
-  if (!res)
-    die("Email copy failed.", conn);
+  strncpy(addr->name, name, conn->db->max_data);
+
+  strncpy(addr->email, email, conn->db->max_data);
 }
 
 void Database_get(Connection *conn, int id) {
@@ -137,7 +156,7 @@ void Database_list(Connection *conn) {
   int i = 0;
   Database *db = conn->db;
 
-  for (i = 0; i < MAX_ROWS; i++) {
+  for (i = 0; i < conn->db->max_rows; i++) {
     Address *cur = &db->rows[i];
     if (cur->set == 1) {
       Address_print(cur);
@@ -151,11 +170,14 @@ int main(int argc, char *argv[]) {
   char *filename = argv[1];
   char action = argv[2][0];
   Connection *conn = Database_open(filename, action);
+
   int id = 0;
-  if (argc > 3)
+  if (argc > 3) {
     id = atoi(argv[3]);
-  if (id >= MAX_ROWS)
-    die("There's not that many records.", conn);
+    if (id >= conn->db->max_rows) {
+      die("There's not that many records.", conn);
+    }
+  }
   switch (action) {
   case 'c':
     Database_create(conn);
